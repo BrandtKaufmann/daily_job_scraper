@@ -20,13 +20,6 @@ playwright install chromium
 
 cp .env.example .env
 # edit .env with your Gmail + app password
-
-# dry run (no email, ignores the seen-store)
-python -m src.main --dry-run --reset-store --verbose
-
-# real run
-export $(grep -v '^#' .env | xargs)
-python -m src.main
 ```
 
 ## Gmail app password

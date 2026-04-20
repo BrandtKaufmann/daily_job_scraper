@@ -11,11 +11,12 @@ from .emailer import send_job_digest
 from .scrapers.apple import AppleScraper
 from .scrapers.base import BaseScraper, Job
 from .scrapers.google import GoogleScraper
+from .scrapers.riot import RiotScraper
 from .seen_store import SeenStore
 
 log = logging.getLogger("djs")
 
-SCRAPERS: list[BaseScraper] = [AppleScraper(), GoogleScraper()]
+SCRAPERS: list[BaseScraper] = [AppleScraper(), GoogleScraper(), RiotScraper()]
 
 
 async def _scrape_one(scraper: BaseScraper) -> list[Job]:
@@ -52,7 +53,7 @@ async def run(dry_run: bool = False, reset_store: bool = False) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Daily job scraper \u2014 Apple + Google DS/AI")
+    parser = argparse.ArgumentParser(description="Daily job scraper \u2014 Apple + Google + Riot DS/AI")
     parser.add_argument(
         "--dry-run", action="store_true",
         help="Scrape and log results without sending email or persisting the seen-store.",

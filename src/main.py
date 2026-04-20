@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import re
 import sys
 
 from .config import load
@@ -17,6 +18,11 @@ from .seen_store import SeenStore
 log = logging.getLogger("djs")
 
 SCRAPERS: list[BaseScraper] = [AppleScraper(), GoogleScraper(), RiotScraper()]
+EXCLUDED_TITLE_RE = re.compile(
+    r"\b(princip(?:al|le)|senior|sr\.?|director|staff|lead|manager)\b",
+    re.IGNORECASE,
+)
+US_LOCATION_RE = re.compile(r"\b(usa|u\.s\.a\.|united states|us)\b", re.IGNORECASE)
 
 
 async def _scrape_one(scraper: BaseScraper) -> list[Job]:
@@ -27,10 +33,41 @@ async def _scrape_one(scraper: BaseScraper) -> list[Job]:
         return []
 
 
+def _is_us_location(location: str) -> bool:
+    return bool(location and US_LOCATION_RE.search(location))
+
+
+def _is_filtered_title(title: str) -> bool:
+    return bool(title and EXCLUDED_TITLE_RE.search(title))
+
+
+def _apply_filters(jobs: list[Job]) -> list[Job]:
+    kept: list[Job] = []
+    removed_title = 0
+    removed_location = 0
+    for job in jobs:
+        if _is_filtered_title(job.title):
+            removed_title += 1
+            continue
+        if not _is_us_location(job.location):
+            removed_location += 1
+            continue
+        kept.append(job)
+
+    log.info(
+        "Filtered out %d jobs by title and %d jobs by non-US location",
+        removed_title,
+        removed_location,
+    )
+    return kept
+
+
 async def run(dry_run: bool = False, reset_store: bool = False) -> int:
     results = await asyncio.gather(*(_scrape_one(s) for s in SCRAPERS))
-    all_jobs: list[Job] = [j for sub in results for j in sub]
-    log.info("Scraped %d jobs total", len(all_jobs))
+    scraped_jobs: list[Job] = [j for sub in results for j in sub]
+    log.info("Scraped %d jobs total", len(scraped_jobs))
+    all_jobs = _apply_filters(scraped_jobs)
+    log.info("Jobs remaining after filters: %d", len(all_jobs))
 
     store = SeenStore()
     if reset_store:

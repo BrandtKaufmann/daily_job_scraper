@@ -7,6 +7,7 @@ from src.scrapers.base import Job
 from src.scrapers.riot import _extract_job_id as riot_extract_job_id
 from src.scrapers.riot import _parse_listing_text as riot_parse_listing_text
 from src.scrapers.riot import KEYWORDS as riot_keywords
+from src.main import _apply_filters as apply_job_filters
 from src.seen_store import SeenStore
 
 
@@ -72,3 +73,30 @@ def test_riot_keyword_filter_matches_data_and_ml_titles():
     assert riot_keywords.search("Senior Data Engineer - Team Insights")
     assert riot_keywords.search("Principal Machine Learning Engineer")
     assert not riot_keywords.search("Art Director - Characters")
+
+
+def test_main_filters_out_seniority_titles_and_non_us_locations():
+    jobs = [
+        Job(company="Riot Games", job_id="1", title="Data Scientist II", location="Los Angeles, USA", url="u1"),
+        Job(company="Riot Games", job_id="2", title="Senior Data Scientist", location="Los Angeles, USA", url="u2"),
+        Job(company="Google", job_id="3", title="Principal ML Engineer", location="Mountain View, CA, USA", url="u3"),
+        Job(company="Google", job_id="7", title="Staff ML Engineer", location="Mountain View, CA, USA", url="u7"),
+        Job(company="Google", job_id="8", title="Lead Data Scientist", location="New York, USA", url="u8"),
+        Job(company="Apple", job_id="4", title="Data Scientist", location="London, UK", url="u4"),
+        Job(company="Apple", job_id="5", title="Director, Applied AI", location="Austin, TX, USA", url="u5"),
+        Job(company="Riot Games", job_id="9", title="Machine Learning Manager", location="Los Angeles, USA", url="u9"),
+        Job(company="Google", job_id="6", title="Machine Learning Engineer", location="Seattle, US", url="u6"),
+    ]
+    filtered = apply_job_filters(jobs)
+    assert [j.job_id for j in filtered] == ["1", "6"]
+
+
+def test_main_filters_principle_spelling_and_requires_us_location():
+    jobs = [
+        Job(company="X", job_id="10", title="Principle Data Scientist", location="New York, USA", url="u10"),
+        Job(company="X", job_id="11", title="Data Scientist", location="Remote", url="u11"),
+        Job(company="X", job_id="13", title="Sr. Data Scientist", location="Seattle, USA", url="u13"),
+        Job(company="X", job_id="12", title="Data Scientist", location="United States", url="u12"),
+    ]
+    filtered = apply_job_filters(jobs)
+    assert [j.job_id for j in filtered] == ["12"]
